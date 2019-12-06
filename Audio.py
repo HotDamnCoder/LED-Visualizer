@@ -1,4 +1,4 @@
-import numpy as np
+import numpy
 import pyaudio
 import wave
 import matplotlib.pyplot as plt
@@ -21,27 +21,27 @@ stream = p.open(format=FORMAT,
 print("* recording")
 
 frames = []
-
+datas = []
 for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
-
     data = stream.read(CHUNK)
-    inta = np.frombuffer(data, dtype=np.int16)
-    frames.append(inta)
+    frames.append(data)
+    what = numpy.frombuffer(data, dtype=numpy.int16)
+    datas.extend(what)
+
+
+
+plt.plot(datas)
+plt.show()
 stream.stop_stream()
 stream.close()
 stream.stop_stream()
 stream.close()
 p.terminate()
 print("* done recording")
-plt.plot(frames)
-plt.show()
-plt.close()
 wf = wave.open(WAVE_OUTPUT_FILENAME, 'wb')
 wf.setnchannels(CHANNELS)
 wf.setsampwidth(p.get_sample_size(FORMAT))
 wf.setframerate(RATE)
 wf.writeframes(b''.join(frames))
 wf.close()
-plt.plot(np.fromfile("C:\\Users\\Marcus\\Desktop\\Audio\\output.wav", dtype=np.int16))
-plt.show()
 print ( "done")
