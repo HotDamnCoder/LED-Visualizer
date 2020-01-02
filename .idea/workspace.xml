@@ -2,10 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="1bf48612-6bb6-481a-a303-dcd0e33e7a7f" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/dictionaries/Marcus_PC.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/Audio.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Audio.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Audio.py" beforeDir="false" afterPath="$PROJECT_DIR$/Audio.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/output.wav" beforeDir="false" afterPath="$PROJECT_DIR$/output.wav" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -28,6 +28,9 @@
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$USER_HOME$/Desktop/spectrogram.py" />
+    <property name="restartRequiresConfirmation" value="false" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -64,20 +67,20 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="pyaudio" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="aaa" type="PythonConfigurationType" factoryName="Python">
       <module name="Audio" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="C:/Program Files (x86)/Python 3.7.4/Lib/site-packages" />
-      <option name="IS_MODULE_SDK" value="true" />
+      <option name="SDK_HOME" value="D:\Python 3.7.4 64-bit\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$USER_HOME$/Desktop" />
+      <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="C:/Program Files (x86)/Python 3.7.4/Lib/site-packages/pyaudio.py" />
+      <option name="SCRIPT_NAME" value="$USER_HOME$/Desktop/spectrogram.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -86,10 +89,13 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <list>
+      <item itemvalue="Python.aaa" />
+      <item itemvalue="Python.Audio" />
+    </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.Audio" />
-        <item itemvalue="Python.pyaudio" />
       </list>
     </recent_temporary>
   </component>
@@ -105,6 +111,15 @@
       <updated>1568037537711</updated>
       <workItem from="1575469964859" duration="3817000" />
       <workItem from="1575475637525" duration="65000" />
+      <workItem from="1577289458813" duration="8954000" />
+      <workItem from="1577306695003" duration="8673000" />
+      <workItem from="1577356994369" duration="5191000" />
+      <workItem from="1577375733743" duration="3223000" />
+      <workItem from="1577385389815" duration="4462000" />
+      <workItem from="1577398778593" duration="776000" />
+      <workItem from="1577911007197" duration="4040000" />
+      <workItem from="1577915593868" duration="225000" />
+      <workItem from="1577976435630" duration="13137000" />
     </task>
     <servers />
   </component>
@@ -125,17 +140,15 @@
     </option>
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/Audio.py</url>
-          <line>28</line>
-          <option name="timeStamp" value="4" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
+    <watches-manager>
+      <configuration name="PythonConfigurationType">
+        <watch expression="what[0]" />
+      </configuration>
+    </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/Audio_Visualizer$aaa.coverage" NAME="aaa Coverage Results" MODIFIED="1577912253496" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/Desktop" />
+    <SUITE FILE_PATH="coverage/Audio_Visualizer$Audio.coverage" NAME="Audio Coverage Results" MODIFIED="1577992652284" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/Audio$Audio.coverage" NAME="Audio Coverage Results" MODIFIED="1575474287279" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
