@@ -1,9 +1,8 @@
-import pyaudio as py
 import matplotlib.pyplot as plt
 import numpy as np
 import pyaudio
 import time
-
+import serial
 
 def map_to_rgb(frequency, loudness):
     loudness_multiplier = 255 / 16384
@@ -71,12 +70,16 @@ def callback(in_data, frame_count, time_info, status):
     max_loudnesses.append(max_loudness)
     loudest_frequencies.append(loudest_frequency)
     """
+    r, g, b = map_to_rgb(int(avg_frequency), int(avg_loudness))
+    output = str(r) + 'R' + str(g) + 'G' + str(b) + 'B'
 
-    print(map_to_rgb(int(avg_frequency), int(avg_loudness)))
+    arduino.write(output.encode())
     return in_data, pyaudio.paContinue
 
 
-p = py.PyAudio()
+arduino = serial.Serial('COM6', 2000000, timeout=0)
+time.sleep(2)
+p = pyaudio.PyAudio()
 rate = 44100
 record_format = pyaudio.paInt16
 channels_amount = 1
@@ -85,7 +88,6 @@ seconds = 10
 data = []
 max_loudnesses = []
 loudest_frequencies = []
-
 stream = p.open(format=record_format,
                 channels=channels_amount,
                 rate=rate,
