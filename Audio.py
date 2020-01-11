@@ -18,19 +18,21 @@ buffer = 1024
 
 
 def map_amplitude_w(w, amplitude):
+    multiplier = 0.5
     loudness_multiplier = 255 / 16384
     amplitude = int(amplitude * loudness_multiplier)
     if amplitude >= 127:
-        amplitude = (amplitude - 127) * 1
+        amplitude = int((amplitude - 127) * multiplier)
         w += amplitude
 
     else:
-        amplitude = abs(amplitude - 127) * 1
+        amplitude = int(abs(amplitude - 127) * multiplier)
         w -= amplitude
     return w
 
 
 def map_amplitude(r, g, b, amplitude):
+    multiplier = 0.5
     loudness_multiplier = 255 / 16384
     amplitude = int(amplitude * loudness_multiplier)
     if amplitude == 0:
@@ -38,12 +40,12 @@ def map_amplitude(r, g, b, amplitude):
         g = 0
         b = 0
     if amplitude >= 127:
-        amplitude = (amplitude - 127) * 1
+        amplitude = int((amplitude - 127) * multiplier)
         r += amplitude
         g += amplitude
         b += amplitude
     else:
-        amplitude = abs(amplitude - 127) * 1
+        amplitude = int(abs(amplitude - 127) * multiplier)
         r -= amplitude
         g -= amplitude
         b -= amplitude
