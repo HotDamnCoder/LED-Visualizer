@@ -1,167 +1,167 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import pyaudio
-import time
+import pygame
+import sys
 import serial
-
-saved_r = 0
-saved_g = 0
-saved_b = 0
-saved_w = 0
-
-port = 'COM6'
-baud_rate = 2000000
-rate = 44100
-record_format = pyaudio.paInt16
-channels_amount = 1
-buffer = 1024
+import time
 
 
-def map_amplitude_w(w, amplitude):
-    multiplier = 0.5
-    loudness_multiplier = 255 / 16384
-    amplitude = int(amplitude * loudness_multiplier)
-    if amplitude >= 127:
-        amplitude = int((amplitude - 127) * multiplier)
-        w += amplitude
+# Arduino related variables
+PORT = 'COM11'
+BAUD_RATE = 2000000
+arduino = serial.Serial(PORT, BAUD_RATE, timeout=.1)
 
+# Initialize pyaudio and get WASAPI info
+PyAudio = pyaudio.PyAudio()
+WASAPI_info = PyAudio.get_host_api_info_by_type(pyaudio.paWASAPI)
+
+# Get default WASAPI output if available else exit
+try:
+    default_WASAPI_output = PyAudio.get_device_info_by_index(WASAPI_info['defaultOutputDevice'])
+except KeyError:
+    print("No WASAPI default output. Exiting...")
+    sys.exit()
+
+# Get appropriate info about the default WASAPI output device
+DEVICE_INDEX = default_WASAPI_output['index']
+RATE = int(default_WASAPI_output['defaultSampleRate'])
+CHANNELS = default_WASAPI_output['maxOutputChannels']
+FORMAT = pyaudio.paInt16
+BUFFER = 1024
+MIN_FREQ_BAND = RATE / BUFFER
+FOURIER_LEN = int(BUFFER / 2)
+#screen = pygame.display.set_mode((480, 480))
+
+
+def get_fourier_from_stream(stream):
+    data = np.frombuffer(stream, "int16")
+    fourier = np.abs(np.fft.rfft(data[::2]))
+    fourier[0] = 0
+    avg_volume = 10 * np.log10(np.mean(fourier))
+    return fourier, avg_volume
+
+
+def get_bands(fourier):
+
+    bass_band_limit = 200
+    midrange_limit = 1500
+    upper_limit = 8000
+
+    bass_band = fourier[1:int(bass_band_limit / MIN_FREQ_BAND)]
+    midrange_band = fourier[int(bass_band_limit / MIN_FREQ_BAND):int(midrange_limit / MIN_FREQ_BAND)]
+    upper_band = fourier[int(midrange_limit / MIN_FREQ_BAND):int(upper_limit / MIN_FREQ_BAND):]
+
+    return bass_band, midrange_band, upper_band
+
+
+def get_bands_mean(bands):
+    return [np.mean(band) for band in bands]
+
+
+def get_bands_mean_db(bands_mean):
+    return [10 * (np.log10(band_mean) if band_mean != 0 else 0) for band_mean in bands_mean]
+
+
+def get_bands_rgb(bands_means, avg_volume):
+    r, g, b = 0, 0, 0
+    max_amplitude = 110
+    min_amplitude = 13
+    if avg_volume > min_amplitude:
+        r, g, b = get_bands_mean_db(bands_means)
+
+        r = r - min_amplitude
+        g = g - min_amplitude
+        b = b - min_amplitude
+
+        r = int(255 * (r / max_amplitude))
+        g = int(255 * (g / max_amplitude))
+        b = int(255 * (b / max_amplitude))
+        #r, g, b = fck_this_shit_up(r,g,b)
+        r, g, b = valid_rgb(r, g, b)
+
+
+    return r, g, b
+
+def fck_this_shit_up(r,g,b):
+    boost = 0
+    slow = 25
+    if r > g and r > b:
+        r += boost
+        g -= slow
+        b -= slow
+    elif g > b and g > r:
+        g += boost
+        r -= slow
+        b -= slow
     else:
-        amplitude = int(abs(amplitude - 127) * multiplier)
-        w -= amplitude
-    return w
-
-
-def map_amplitude(r, g, b, amplitude):
-    multiplier = 0.5
-    loudness_multiplier = 255 / 16384
-    amplitude = int(amplitude * loudness_multiplier)
-    if amplitude == 0:
-        r = 0
-        g = 0
-        b = 0
-    if amplitude >= 127:
-        amplitude = int((amplitude - 127) * multiplier)
-        r += amplitude
-        g += amplitude
-        b += amplitude
-    else:
-        amplitude = int(abs(amplitude - 127) * multiplier)
-        r -= amplitude
-        g -= amplitude
-        b -= amplitude
+        b += boost
+        r -= slow
+        g -= slow
     return r, g, b
 
 
-def map_pitch(r, g, b, frequency):
-    frequency_multiplier = 255 / 3676
-    if 0 <= frequency <= 7350:
-        r = 255
-        if frequency > 3676:
-            frequency = int((frequency-3676) * frequency_multiplier)
-            g = frequency
-        else:
-            frequency = int(frequency * frequency_multiplier)
-            b = frequency
-    elif 7351 <= frequency <= 14700:
-        g = 255
-        if frequency > 11026:
-            frequency = int((frequency - (3676 + 7350)) * frequency_multiplier)
-            g = frequency
-        else:
-            frequency = int((frequency - 7350) * frequency_multiplier)
-            b = frequency
-    else:
-        b = 255
-        if frequency > 18376:
-            frequency = int((frequency - (3676 + 7350*2)) * frequency_multiplier)
-            g = frequency
-        else:
-            frequency = int((frequency - 7350 * 2) * frequency_multiplier)
-            b = frequency
+def get_rgb(data):
+    # red part / bass part
+    bass_band = data[1: round(250 / MIN_FREQ_BAND)]
+    peak_bass = np.argmax(bass_band) + 1
+    r = int(peak_bass * 255 / len(bass_band))
+
+    medium_band = data[round(250 / MIN_FREQ_BAND): round(2000 / MIN_FREQ_BAND)]
+    peak_medium = np.argmax(medium_band) + 1
+    g = int(peak_medium * 255 / len(medium_band))
+
+    high_band = data[round(2000 / MIN_FREQ_BAND): round(6000 / MIN_FREQ_BAND)]
+    peak_high = np.argmax(high_band) + 1
+    b = int(peak_high * 255 / len(high_band))
+
     return r, g, b
 
 
-def check_if_changed(r, g, b, amount):
-    if abs(r-saved_r) > amount:
-        r = saved_r
-    if abs(g - saved_g) > amount:
-        g = saved_g
-    if abs(r - saved_b) > amount:
-        b = saved_b
-    return r, g, b
+def valid_rgb(r, g, b):
+    r = max(0, r)
+    g = max(0, g)
+    b = max(0, b)
+
+    r = min(255, r)
+    g = min(255, g)
+    b = min(255, b)
+
+    return int(r), int(g), int(b)
 
 
-def normalize(r, g, b):
-    if r < 0:
-        r = 0
-    elif r > 255:
-        r = 255
-    if g < 0:
-        g = 0
-    elif g > 255:
-        g = 255
-    if b < 0:
-        b = 0
-    elif b > 255:
-        b = 255
-    return r, g, b
+def callback(in_stream, frame_count, time_info, status):
+    fourier, avg_volume = get_fourier_from_stream(in_stream)
+    fourier = np.where(fourier > avg_volume, fourier, 0)
+    # r, g, b = get_rgb(fourier)
+    bands = get_bands(fourier)
+    band_means = get_bands_mean(bands)
+    r, g, b = get_bands_rgb(band_means, avg_volume)
+    arduino.write(str.encode(str(r) + "R" + str(g) + "G" + str(b) + "B"))
+    print('\r', r, g, b, end="")
+    """screen.fill((r, g, b))
+    pygame.display.flip()"""
 
+    return in_stream, pyaudio.paContinue
 
-def map_to_rgb(frequency, amplitude, change_necessary):
-    r = g = b = 0
-    r, g, b = map_pitch(r, g, b, frequency)
-    r, g, b = map_amplitude(r, g, b, amplitude)
-    r, g, b = normalize(r, g, b)
-    print(r, g, b)
-    return r, g, b
+time.sleep(1)
+STREAM = PyAudio.open(format=FORMAT,
+                      channels=CHANNELS,
+                      rate=RATE,
+                      input=True,
+                      frames_per_buffer=BUFFER,
+                      stream_callback=callback,
+                      input_device_index=DEVICE_INDEX,
+                      as_loopback=True)
 
+STREAM.start_stream()
 
-def search_for_averages(fourier, avg_frequency_amplitude):
-    avg_frequencies = np.where(np.abs(fourier - avg_frequency_amplitude) < 100)[0]
-    if avg_frequencies.size == 0:
-        avg_frequencies = np.where(np.abs(fourier - avg_frequency_amplitude) < 500)[0]
-        if avg_frequencies.size == 0:
-            count = 1
-            while avg_frequencies.size == 0:
-                avg_frequencies = np.where(np.abs(fourier - avg_frequency_amplitude) < 1000 * count)[0]
-                count += 1
-    return avg_frequencies
+print("Starting recording...")
 
+while STREAM.is_active():
+    pass
+    #for event in pygame.event.get():
+        #continue
 
-def callback(in_data, frame_count, time_info, status):
-    change_necessary = 0
-    data_numpy_array = np.frombuffer(in_data, "int16")
-    fourier = np.abs(np.fft.rfft(data_numpy_array))
-    """ testing stuff
-    loudest_frequency = np.where(fourier == fourier.max())[0] * (rate / len(data_numpy_array))
-    max_loudness = np.abs(data_numpy_array).max()
-    """
-    avg_amplitude = np.average(np.abs(data_numpy_array))
-    avg_frequency_amplitude = np.average(fourier)
-    avg_frequencies = search_for_averages(fourier, avg_frequency_amplitude)
-    avg_frequency = np.average(avg_frequencies) * (rate / len(data_numpy_array))
-    print(avg_frequency, avg_amplitude)
-    r, g, b = map_to_rgb(int(avg_frequency), int(avg_amplitude), change_necessary)
-    output = str(r) + 'R' + str(g) + 'G' + str(b) + 'B'
-    #arduino_serial.write(output.encode())
-    return in_data, pyaudio.paContinue
-
-
-#arduino_serial = serial.Serial(port, baud_rate, timeout=0)
-#time.sleep(2)
-p = pyaudio.PyAudio()
-stream = p.open(format=record_format,
-                channels=channels_amount,
-                rate=rate,
-                input=True,
-                frames_per_buffer=buffer,
-                stream_callback=callback,
-                input_device_index=2)
-
-print("recording")
-stream.start_stream()
-while stream.is_active():
-    time.sleep(0.1)
-stream.stop_stream()
-stream.close()
-p.terminate()
+STREAM.stop_stream()
+STREAM.close()
+PyAudio.terminate()
