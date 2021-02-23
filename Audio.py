@@ -1,32 +1,22 @@
 import numpy as np
-import pyaudio
-import sys
-import serial
+import sounddevice as sd
+import socket
+import pygame
 
-# Arduino related variables
-PORT = 'COM6'
-BAUD_RATE = 2000000
+pygame.init()
+screen = pygame.display.set_mode((400, 300))
 
-# Initialize pyaudio and get WASAPI info
-PyAudio = pyaudio.PyAudio()
-WASAPI_info = PyAudio.get_host_api_info_by_type(pyaudio.paWASAPI)
-ARDUINO_SERIAL = serial.Serial(PORT, BAUD_RATE, timeout=0.1)
+UDP_IP_ADDRESS = "192.168.1.139"
+UDP_PORT_NUMBER = 8888
 
-# Get default WASAPI output if available else exit
-try:
-    default_WASAPI_output = PyAudio.get_device_info_by_index(WASAPI_info['defaultOutputDevice'])
-except KeyError:
-    print("No WASAPI default output. Exiting...")
-    sys.exit()
 
-# Get appropriate info about the default WASAPI output device
-DEVICE_INDEX = default_WASAPI_output['index']
-RATE = int(default_WASAPI_output['defaultSampleRate'])
-CHANNELS = default_WASAPI_output['maxOutputChannels']
-FORMAT = pyaudio.paInt16
+RATE = 44100
+CHANNELS = 2
+FORMAT = np.int16
 BUFFER = 1024
 MIN_FREQ_BAND = RATE / BUFFER
 FOURIER_LEN = int(BUFFER / 2)
+clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
 def get_fourier_from_stream(stream):
@@ -61,6 +51,7 @@ def get_bands_mean_db(bands_mean):
 def get_bands_rgb(bands_means, avg_volume):
     max_amplitude = 60
     min_amplitude = 15
+    r, g, b = 0, 0, 0
     if avg_volume > min_amplitude:
         r, b, g = get_bands_mean_db(bands_means)
 
@@ -90,7 +81,6 @@ def get_rgb(data):
     high_band = data[round(2000 / MIN_FREQ_BAND): round(6000 / MIN_FREQ_BAND)]
     peak_high = np.argmax(high_band) + 1
     b = int(peak_high * 255 / len(high_band))
-
     return r, g, b
 
 
@@ -113,27 +103,22 @@ def callback(in_stream, frame_count, time_info, status):
     bands = get_bands(fourier)
     band_means = get_bands_mean(bands)
     r, g, b = get_bands_rgb(band_means, avg_volume)
-    ARDUINO_SERIAL.write(str.encode(str(r) + 'R' + str(g) + 'G' + str(b) + 'B'))
+    message = "R" + str(r) + "G" + str(g) + "B" + str(b)
+    clientsocket.sendto(bytes(message, 'utf-8'), (UDP_IP_ADDRESS, UDP_PORT_NUMBER))
+    screen.fill([r, g,b])
+    pygame.display.flip()
 
-    return in_stream, pyaudio.paContinue
 
+STREAM = sd.InputStream(
+        samplerate=RATE,
+        blocksize=BUFFER,
+        channels=CHANNELS,
+        dtype=FORMAT,
+        callback=callback)
 
-STREAM = PyAudio.open(format=FORMAT,
-                      channels=CHANNELS,
-                      rate=RATE,
-                      input=True,
-                      frames_per_buffer=BUFFER,
-                      stream_callback=callback,
-                      input_device_index=DEVICE_INDEX,
-                      as_loopback=True)
+with STREAM:
+    while(True):
+        for event in pygame.event.get():
+            continue
 
-STREAM.start_stream()
-
-print("Starting recording...")
-
-while STREAM.is_active():
-    pass
-
-STREAM.stop_stream()
-STREAM.close()
-PyAudio.terminate()
+STREAM.stop()
