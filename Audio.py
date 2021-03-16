@@ -5,7 +5,7 @@ import platform
 import sys
 
 
-MAX_AMP = 2 ** 31 - 1
+MAX_AMP = 10 ** (110 / 10)
 
 ARDUINO_IP_ADDRESS = "esp8266.local"
 ARDUINO_PORT_NUMBER = 8888
@@ -102,7 +102,7 @@ def analyzeData(in_data):
         r_band, g_band, b_band, fourier)
     r, g, b, w = mapAmplitudeToColorRange(
         255, avg_r_band, avg_g_band, avg_b_band, avg_volume)
-    return r, g, b, w
+    return validatedNumbers(255, r, g, b, w)
 
 
 def getFourierTransform(in_data, window_function):
@@ -123,10 +123,11 @@ def getAverages(*args):
 
 
 def mapAmplitudeToColorRange(map_range, *args):
-    values = []
-    for arg in args:
-        values.append(round(map_range * (arg / MAX_AMP)))
-    return values
+    return [round(map_range * (arg / MAX_AMP)) for arg in args]
+
+
+def validatedNumbers(map_range, *args):
+    return [max(0, min(map_range, arg)) for arg in args]
 
 
 if __name__ == "__main__":
