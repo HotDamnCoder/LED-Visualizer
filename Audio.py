@@ -3,7 +3,7 @@ import numpy as np
 import socket
 import platform
 import sys
-import matplotlib.pyplot as plt
+
 
 MAX_AMP = 2 ** 31 - 1
 
