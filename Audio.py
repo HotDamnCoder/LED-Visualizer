@@ -1,21 +1,18 @@
+# ! https://www.nti-audio.com/en/support/know-how/fast-fourier-transform-fft good resource about fft
 import numpy as np
 import socket
 import platform
 import sys
 import matplotlib.pyplot as plt
 
-CURRENT_OS = platform.system()
-CHUNK_SIZE = 1024
+MAX_AMP = 2 ** 31 - 1
 
-ARDUINO_IP_ADDRESS = "192.168.1.139"
+ARDUINO_IP_ADDRESS = "esp8266.local"
 ARDUINO_PORT_NUMBER = 8888
 CLIENT_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+CURRENT_OS = platform.system()
 
-
-def exit():
-    print("Exiting...")
-    print("Have a nice day! :)")
-    sys.exit()
+CHUNK_SIZE = 1024
 
 if CURRENT_OS == 'Linux':
     import alsaaudio
@@ -24,12 +21,12 @@ if CURRENT_OS == 'Linux':
     channels = 1
     data_format = alsaaudio.PCM_FORMAT_S16_LE
 
-    MIN_FREQ_BAND = rate / CHUNK_SIZE
+    FREQ_RESOLUTION = rate / CHUNK_SIZE
     STREAM = alsaaudio.PCM(type=alsaaudio.PCM_CAPTURE,
                            mode=alsaaudio.PCM_NORMAL,
                            rate=rate,
                            channels=channels,
-                           format=alsaaudio.PCM_FORMAT_S16_LE,
+                           format=alsaaudio.PCM_FORMAT_S32_LE,
                            periodsize=CHUNK_SIZE)
 elif CURRENT_OS == 'Windows':
     import pyaudio
@@ -38,7 +35,8 @@ elif CURRENT_OS == 'Windows':
     WASAPI_info = PyAudio.get_host_api_info_by_type(pyaudio.paWASAPI)
 
     if 'defaultOutputDevice' in WASAPI_info.keys():
-        device = PyAudio.get_device_info_by_index(WASAPI_info['defaultOutputDevice'])
+        device = PyAudio.get_device_info_by_index(
+            WASAPI_info['defaultOutputDevice'])
     else:
         print("No WASAPI compatible device!")
         # TODO: Add support for stero mix maybe
@@ -47,114 +45,99 @@ elif CURRENT_OS == 'Windows':
     device_index = device['index']
     rate = int(device['defaultSampleRate'])
     channels = 1
-    data_format = pyaudio.paInt16
-    
-    MIN_FREQ_BAND = rate / CHUNK_SIZE
+    data_format = pyaudio.paInt32
+
+    FREQ_RESOLUTION = rate / CHUNK_SIZE
     STREAM = PyAudio.open(format=data_format,
                           channels=channels,
                           rate=rate,
                           input=True,
-                          frames_per_buffer=BUFFER,
+                          frames_per_buffer=CHUNK_SIZE,
                           input_device_index=device_index)
-
-
 else:
     print("OS not supported!")
     exit()
 
+BASE_BAND_UPPER_LIMIT = round(600 / FREQ_RESOLUTION)
+MIDRANGE_BAND_UPPER_LIMIT = round(2400 / FREQ_RESOLUTION)
+UPPERRANGE_BAND_UPPER_LIMIT = round(9600 / FREQ_RESOLUTION)
 
-def getFourierTransform(in_data):
-    data = np.frombuffer(in_data, "int16")
-    fourier = np.abs(np.fft.rfft(data))
+
+def exit():
+    print("Exiting...")
+    print("Have a nice day! :)")
+    sys.exit()
+
+
+def readInputStream():
+    if CURRENT_OS == 'Linux':
+        in_stream = STREAM.read()[1]
+    elif CURRENT_OS == 'Windows':
+        in_stream = STREAM.read(CHUNK_SIZE)
+    return in_stream
+
+
+def closeInputStream():
+    if CURRENT_OS == 'Linux':
+        pass
+    elif CURRENT_OS == 'Windows':
+        STREAM.stop_stream()
+        STREAM.close()
+        PyAudio.terminate()
+
+
+def sendColorCode(r, g, b, w):
+    color_code = bytes("R%dG%dB%dW%dE" % (r, g, b, w), 'utf-8')
+    # ! CANT HAVE DNS NAME HAS IP OR ELSE LATENCY IS UP THE ROOF
+    CLIENT_SOCKET.sendto(color_code, ("192.168.1.156", ARDUINO_PORT_NUMBER))
+
+
+def analyzeData(in_data):
+    fourier = getFourierTransform(in_data, np.blackman)
+    # * Remove the DC offset. Bare in mind that if u want to get the freq u have to do index + 1
+    fourier = fourier[1:]
+
+    r_band, g_band, b_band = getBands(fourier)
+    avg_r_band, avg_g_band, avg_b_band, avg_volume = getAverages(
+        r_band, g_band, b_band, fourier)
+    r, g, b, w = mapAmplitudeToColorRange(
+        255, avg_r_band, avg_g_band, avg_b_band, avg_volume)
+    return r, g, b, w
+
+
+def getFourierTransform(in_data, window_function):
+    fourier = np.abs(np.fft.rfft(in_data * window_function(len(in_data))))
     return fourier
 
 
-def get_bands(fourier):
-
-    bass_band_limit = 400
-    midrange_limit = 1000
-    upper_limit = 4000
-
-    bass_band = fourier[1:int(bass_band_limit / MIN_FREQ_BAND)]
-    midrange_band = fourier[int(bass_band_limit / MIN_FREQ_BAND):int(midrange_limit / MIN_FREQ_BAND)]
-    upper_band = fourier[int(midrange_limit / MIN_FREQ_BAND):int(upper_limit / MIN_FREQ_BAND):]
+def getBands(fourier):
+    bass_band = fourier[:BASE_BAND_UPPER_LIMIT]
+    midrange_band = fourier[BASE_BAND_UPPER_LIMIT:MIDRANGE_BAND_UPPER_LIMIT]
+    upper_band = fourier[MIDRANGE_BAND_UPPER_LIMIT:UPPERRANGE_BAND_UPPER_LIMIT]
 
     return bass_band, midrange_band, upper_band
 
 
-def get_bands_mean(bands):
-    return [np.mean(band) for band in bands]
+def getAverages(*args):
+    return [np.average(arg) for arg in args]
 
 
-def get_bands_mean_db(bands_mean):
-    return [10 * (np.log10(band_mean) if band_mean != 0 else 0) for band_mean in bands_mean]
+def mapAmplitudeToColorRange(map_range, *args):
+    values = []
+    for arg in args:
+        values.append(round(map_range * (arg / MAX_AMP)))
+    return values
 
-
-def valid_rgb(r, g, b):
-    r = max(0, r)
-    g = max(0, g)
-    b = max(0, b)
-
-    r = min(255, r)
-    g = min(255, g)
-    b = min(255, b)
-
-    return r, g, b
-
-
-def get_bands_rgb(bands_means, avg_volume):
-    max_amplitude = 60
-    min_amplitude = 15
-    r, g, b = 0, 0, 0
-    if avg_volume > min_amplitude:
-        r, b, g = get_bands_mean_db(bands_means)
-
-        r = r - min_amplitude
-        g = g - min_amplitude
-        b = b - min_amplitude
-
-        r = int(255 * (r / max_amplitude))
-        b = int(255 * (b / max_amplitude))
-        g = int(255 * (g / max_amplitude))
-
-        r, g, b = valid_rgb(r, g, b)
-
-    return r, g, b
-
-
-def analyzeData(in_data):
-    fourier = getFourierTransform(in_data)
-    avg_volume = fourier[0]
-
-    fourier = np.where(fourier > avg_volume, fourier, 0)
-    bands = get_bands(fourier)
-    band_means = get_bands_mean(bands)
-
-    r, g, b = get_bands_rgb(band_means, avg_volume)
-    return r, g, b
-
-
-def sendColorCode(r, g, b):
-    color_code = bytes("R%dG%dB%dE" % (r, g, b), 'utf-8')
-    CLIENT_SOCKET.sendto(color_code, (ARDUINO_IP_ADDRESS, ARDUINO_PORT_NUMBER))
-    
 
 if __name__ == "__main__":
-    print("Starting to read...")
-    print("Press to CTRL + C to exit.")
     try:
         while True:
-            if CURRENT_OS == 'Linux':
-                in_data = STREAM.read()[1]
-            elif CURRENT_OS == 'Windows':
-                in_data = STREAM.read(CHUNK_SIZE)
-            else:
-                print("OS not supported!")
-                exit()
-            r, g, b = analyzeData(in_data)
-            sendColorCode(r, g, b)
+            in_stream = readInputStream()
+            data = np.frombuffer(in_stream, "int32")
+            r, g, b, w = analyzeData(data)
+            sendColorCode(r, g, b, w)
     except KeyboardInterrupt:
         CLIENT_SOCKET.close()
+        closeInputStream()
         print()
         exit()
-
