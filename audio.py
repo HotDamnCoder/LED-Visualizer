@@ -42,7 +42,7 @@ elif CURRENT_OS == 'Windows':
             WASAPI_info['defaultOutputDevice'])
     else:
         print("No WASAPI compatible device!")
-        # TODO: Add support for stero mix maybe
+        # TODO: Add support for stereo mix maybe
         exit()
 
     device_index = device['index']
