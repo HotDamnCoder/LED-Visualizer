@@ -21,6 +21,7 @@ def getDominantColor(image, palette_size=4):
 
 
 if __name__ == "__main__":
+    print("Starting to record screen...")
     try:
         while True:
             screen = ImageGrab.grab()

@@ -147,6 +147,7 @@ def validatedNumbers(*args):
 
 
 if __name__ == "__main__":
+    print("Starting to record audio...")
     try:
         while True:
             in_stream = readInputStream()
