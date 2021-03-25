@@ -56,7 +56,8 @@ elif CURRENT_OS == 'Windows':
                           rate=rate,
                           input=True,
                           frames_per_buffer=CHUNK_SIZE,
-                          input_device_index=device_index)
+                          input_device_index=device_index,
+                          as_loopback=True)
 else:
     print("OS not supported!")
     exit()

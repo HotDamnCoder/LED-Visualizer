@@ -1,7 +1,7 @@
 
 from PIL import Image
 from PIL import ImageGrab
-from audio import sendColorCode
+from audio import CLIENT_SOCKET, sendColorCode, exit
 
 
 def getDominantColor(image, palette_size=4):
@@ -21,7 +21,12 @@ def getDominantColor(image, palette_size=4):
 
 
 if __name__ == "__main__":
-    while True:
-        screen = ImageGrab.grab()
-        r, g, b = getDominantColor(screen)
-        sendColorCode(r, g, b, 0)
+    try:
+        while True:
+            screen = ImageGrab.grab()
+            r, g, b = getDominantColor(screen)
+            sendColorCode(r, g, b, 0)
+    except KeyboardInterrupt:
+        CLIENT_SOCKET.close()
+        print()
+        exit()
