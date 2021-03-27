@@ -3,7 +3,7 @@ import getopt
 import socket
 from math import sqrt
 from PIL import ImageGrab
-from audio import CLIENT_SOCKET, sendColorCode, exit
+from audio import sendColorCode, exit
 
 
 def getAverageColorFromResizing(image):
@@ -15,6 +15,7 @@ def getAverageColorFromResizing(image):
 
 
 if __name__ == "__main__":
+    CLIENT_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     ARDUINO_IP = None
     ARDUINO_PORT = None
     try:

@@ -4,13 +4,6 @@ import platform
 import sys
 import getopt
 # ! https://www.nti-audio.com/en/support/know-how/fast-fourier-transform-fft good resource about fft
-# * Sets the maximum amplitude of signal in int32 and the buffer size
-
-MAX_AMP = 10 ** (100 / 10)
-CHUNK_SIZE = 1024
-
-CLIENT_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-CURRENT_OS = platform.system()
 
 
 def exit(message):
@@ -19,70 +12,6 @@ def exit(message):
     print("Exiting...")
     print("Have a nice day! :)")
     sys.exit()
-
-
-# * Initializes OS specific recording variables
-if CURRENT_OS == 'Linux':
-    import alsaaudio
-
-    rate = 44100
-    channels = 1
-    data_format = alsaaudio.PCM_FORMAT_S16_LE
-
-    FREQ_RESOLUTION = rate / CHUNK_SIZE
-    STREAM = alsaaudio.PCM(type=alsaaudio.PCM_CAPTURE,
-                           mode=alsaaudio.PCM_NORMAL,
-                           rate=rate,
-                           channels=channels,
-                           format=alsaaudio.PCM_FORMAT_S32_LE,
-                           periodsize=CHUNK_SIZE)
-
-elif CURRENT_OS == 'Windows':
-    import pyaudio
-
-    def findStereoMix(PyAudio):
-        for i in range(PyAudio.get_device_count()):
-            host_api = PyAudio.get_host_api_info_by_index(i)
-            for j in range(host_api['deviceCount']):
-                api_device = PyAudio.get_device_info_by_host_api_device_index(
-                    i, j)
-                if api_device['name'] == "Stereo Mix":
-                    return api_device
-        return None
-
-    PyAudio = pyaudio.PyAudio()
-    WASAPI_info = PyAudio.get_host_api_info_by_type(pyaudio.paWASAPI)
-
-    if 'defaultOutputDevice' in WASAPI_info.keys():
-        recording_device = PyAudio.get_device_info_by_index(
-            WASAPI_info['defaultOutputDevice'])
-    else:
-        print("No WASAPI compatible device.")
-        print("Using Stereo Mix.")
-        recording_device = findStereoMix(PyAudio)
-        if recording_device is None:
-            exit("Didn't find Stereo Mix.")
-
-    device_index = recording_device['index']
-    rate = int(recording_device['defaultSampleRate'])
-    channels = 1
-    data_format = pyaudio.paInt32
-
-    FREQ_RESOLUTION = rate / CHUNK_SIZE
-    STREAM = PyAudio.open(format=data_format,
-                          channels=channels,
-                          rate=rate,
-                          input=True,
-                          frames_per_buffer=CHUNK_SIZE,
-                          input_device_index=device_index,
-                          as_loopback=True)
-
-else:
-    exit("OS not supported.")
-
-BASE_BAND_UPPER_LIMIT = round(600 / FREQ_RESOLUTION)
-MIDRANGE_BAND_UPPER_LIMIT = round(2400 / FREQ_RESOLUTION)
-UPPERRANGE_BAND_UPPER_LIMIT = round(9600 / FREQ_RESOLUTION)
 
 
 def readInputStream():
@@ -157,8 +86,80 @@ def validatedNumbers(*args):
 
 
 if __name__ == "__main__":
+
+    # * Sets the maximum amplitude of signal in int32 and the buffer size
+    MAX_AMP = 10 ** (100 / 10)
+    CHUNK_SIZE = 1024
+
+    CLIENT_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    CURRENT_OS = platform.system()
+
+    # * Initializes OS specific recording variables
+    if CURRENT_OS == 'Linux':
+        import alsaaudio
+
+        rate = 44100
+        channels = 1
+        data_format = alsaaudio.PCM_FORMAT_S16_LE
+
+        FREQ_RESOLUTION = rate / CHUNK_SIZE
+        STREAM = alsaaudio.PCM(type=alsaaudio.PCM_CAPTURE,
+                               mode=alsaaudio.PCM_NORMAL,
+                               rate=rate,
+                               channels=channels,
+                               format=alsaaudio.PCM_FORMAT_S32_LE,
+                               periodsize=CHUNK_SIZE)
+
+    elif CURRENT_OS == 'Windows':
+        import pyaudio
+
+        def findStereoMix(PyAudio):
+            for i in range(PyAudio.get_device_count()):
+                host_api = PyAudio.get_host_api_info_by_index(i)
+                for j in range(host_api['deviceCount']):
+                    api_device = PyAudio.get_device_info_by_host_api_device_index(
+                        i, j)
+                    if api_device['name'] == "Stereo Mix":
+                        return api_device
+            return None
+
+        PyAudio = pyaudio.PyAudio()
+        WASAPI_info = PyAudio.get_host_api_info_by_type(pyaudio.paWASAPI)
+
+        if 'defaultOutputDevice' in WASAPI_info.keys():
+            recording_device = PyAudio.get_device_info_by_index(
+                WASAPI_info['defaultOutputDevice'])
+        else:
+            print("No WASAPI compatible device.")
+            print("Using Stereo Mix.")
+            recording_device = findStereoMix(PyAudio)
+            if recording_device is None:
+                exit("Didn't find Stereo Mix.")
+
+        device_index = recording_device['index']
+        rate = int(recording_device['defaultSampleRate'])
+        channels = 1
+        data_format = pyaudio.paInt32
+
+        FREQ_RESOLUTION = rate / CHUNK_SIZE
+        STREAM = PyAudio.open(format=data_format,
+                              channels=channels,
+                              rate=rate,
+                              input=True,
+                              frames_per_buffer=CHUNK_SIZE,
+                              input_device_index=device_index,
+                              as_loopback=True)
+
+    else:
+        exit("OS not supported.")
+
+    BASE_BAND_UPPER_LIMIT = round(600 / FREQ_RESOLUTION)
+    MIDRANGE_BAND_UPPER_LIMIT = round(2400 / FREQ_RESOLUTION)
+    UPPERRANGE_BAND_UPPER_LIMIT = round(9600 / FREQ_RESOLUTION)
+
     ARDUINO_IP = None
     ARDUINO_PORT = None
+
     try:
         options, remainder = getopt.getopt(sys.argv[1:], "hp:", ["ip="])
         for opt, arg in options:
