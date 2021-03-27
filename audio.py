@@ -5,6 +5,8 @@ import sys
 import getopt
 # ! https://www.nti-audio.com/en/support/know-how/fast-fourier-transform-fft good resource about fft
 
+CLIENT_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
 
 def exit(message):
     # * Exits the program
@@ -14,22 +16,22 @@ def exit(message):
     sys.exit()
 
 
-def readInputStream():
+def readInputStream(stream, chunk):
     # * Reads from recording based on the OS implementation
-    if CURRENT_OS == 'Linux':
-        in_stream = STREAM.read()[1]
-    elif CURRENT_OS == 'Windows':
-        in_stream = STREAM.read(CHUNK_SIZE)
+    if current_os == 'Linux':
+        in_stream = stream.read()[1]
+    elif current_os == 'Windows':
+        in_stream = stream.read(chunk)
     return in_stream
 
 
-def closeInputStream():
+def closeInputStream(stream):
     # * Closes recording based on the OS implementation
-    if CURRENT_OS == 'Linux':
+    if current_os == 'Linux':
         pass
-    elif CURRENT_OS == 'Windows':
-        STREAM.stop_stream()
-        STREAM.close()
+    elif current_os == 'Windows':
+        stream.stop_stream()
+        stream.close()
         PyAudio.terminate()
 
 
@@ -85,32 +87,55 @@ def validatedNumbers(*args):
     return [max(0, min(255, arg)) for arg in args]
 
 
+def argumentParsing():
+    ip = None
+    port = None
+    try:
+        options, remainder = getopt.getopt(sys.argv[1:], "hp:", ["ip="])
+        for opt, arg in options:
+            if opt == "--ip":
+                try:
+                    ip = socket.gethostbyname(arg)
+                except socket.error:
+                    exit("Invalid ip address.")
+            elif opt == "-p":
+                try:
+                    port = int(arg)
+                except ValueError:
+                    exit("Invalid port number.")
+            elif opt == '-h':
+                exit("Script usage : <script_name> --ip <arduino_ip> -p <arduino_port>")
+        if ip is None or port is None:
+            exit("Not enough arguments.")
+    except getopt.GetoptError:
+        exit("Invalid arguments.")
+
+    return ip, port
+
+
 if __name__ == "__main__":
-
-    # * Sets the maximum amplitude of signal in int32 and the buffer size
-    MAX_AMP = 10 ** (100 / 10)
-    CHUNK_SIZE = 1024
-
-    CLIENT_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    CURRENT_OS = platform.system()
+    # * Sets the chunk size
+    chunk_size = 1024
 
     # * Initializes OS specific recording variables
-    if CURRENT_OS == 'Linux':
+    current_os = platform.system()
+    
+    if current_os == 'Linux':
         import alsaaudio
 
         rate = 44100
         channels = 1
         data_format = alsaaudio.PCM_FORMAT_S16_LE
 
-        FREQ_RESOLUTION = rate / CHUNK_SIZE
-        STREAM = alsaaudio.PCM(type=alsaaudio.PCM_CAPTURE,
-                               mode=alsaaudio.PCM_NORMAL,
-                               rate=rate,
-                               channels=channels,
-                               format=alsaaudio.PCM_FORMAT_S32_LE,
-                               periodsize=CHUNK_SIZE)
+        freq_resolution = rate / chunk_size
+        recording_stream = alsaaudio.PCM(type=alsaaudio.PCM_CAPTURE,
+                                         mode=alsaaudio.PCM_NORMAL,
+                                         rate=rate,
+                                         channels=channels,
+                                         format=alsaaudio.PCM_FORMAT_S32_LE,
+                                         periodsize=chunk_size)
 
-    elif CURRENT_OS == 'Windows':
+    elif current_os == 'Windows':
         import pyaudio
 
         def findStereoMix(PyAudio):
@@ -141,54 +166,35 @@ if __name__ == "__main__":
         channels = 1
         data_format = pyaudio.paInt32
 
-        FREQ_RESOLUTION = rate / CHUNK_SIZE
-        STREAM = PyAudio.open(format=data_format,
-                              channels=channels,
-                              rate=rate,
-                              input=True,
-                              frames_per_buffer=CHUNK_SIZE,
-                              input_device_index=device_index,
-                              as_loopback=True)
+        freq_resolution = rate / chunk_size
+        recording_stream = PyAudio.open(format=data_format,
+                                        channels=channels,
+                                        rate=rate,
+                                        input=True,
+                                        frames_per_buffer=chunk_size,
+                                        input_device_index=device_index,
+                                        as_loopback=True)
 
     else:
         exit("OS not supported.")
 
-    BASE_BAND_UPPER_LIMIT = round(600 / FREQ_RESOLUTION)
-    MIDRANGE_BAND_UPPER_LIMIT = round(2400 / FREQ_RESOLUTION)
-    UPPERRANGE_BAND_UPPER_LIMIT = round(9600 / FREQ_RESOLUTION)
+    # * Sets the variables associated with audio analysis
+    MAX_AMP = 10 ** (100 / 10)
+    BASE_BAND_UPPER_LIMIT = round(600 / freq_resolution)
+    MIDRANGE_BAND_UPPER_LIMIT = round(2400 / freq_resolution)
+    UPPERRANGE_BAND_UPPER_LIMIT = round(9600 / freq_resolution)
 
-    ARDUINO_IP = None
-    ARDUINO_PORT = None
-
-    try:
-        options, remainder = getopt.getopt(sys.argv[1:], "hp:", ["ip="])
-        for opt, arg in options:
-            if opt == "--ip":
-                try:
-                    ARDUINO_IP = socket.gethostbyname(arg)
-                except socket.error:
-                    exit("Invalid ip address.")
-            elif opt == "-p":
-                try:
-                    ARDUINO_PORT = int(arg)
-                except ValueError:
-                    exit("Invalid port number.")
-            elif opt == '-h':
-                exit("Script usage : <script_name> --ip <arduino_ip> -p <arduino_port>")
-    except getopt.GetoptError:
-        exit("Invalid arguments.")
-
-    if ARDUINO_IP is None or ARDUINO_PORT is None:
-        exit("Not enough arguments.")
+    # * Argument parsing
+    arduino_ip, arduino_port = argumentParsing()
 
     print("Starting to record audio...")
     try:
         while True:
-            in_stream = readInputStream()
+            in_stream = readInputStream(recording_stream, chunk_size)
             data = np.frombuffer(in_stream, "int32")
             r, g, b, w = analyzeData(data)
-            sendColorCode(ARDUINO_IP, ARDUINO_PORT, (r, g, b, w))
+            sendColorCode(arduino_ip, arduino_port, (r, g, b, w))
     except KeyboardInterrupt:
         CLIENT_SOCKET.close()
-        closeInputStream()
+        closeInputStream(recording_stream)
         exit("")
