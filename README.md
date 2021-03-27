@@ -8,6 +8,6 @@ Dependencies:
 - pyaudio (alsaaudio if you're on linux)
 - Python Image Library (PIL)
 
-Usage : <script_name> --ip <arduino_ip> -p <arduino_port>.
+Usage : <script_name> --ip <arduino_ip> -p <arduino_port>
 
 For IP argument it can be also a mDNS or DNS name
