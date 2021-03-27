@@ -4,10 +4,11 @@ A simple LED-visualizer program written in Python which communicates its informa
 Supports audio (audio.py) and video (video.py) visualization for RGBW non-adressable LED strip.
 
 Dependencies:
-- numpy
-- pyaudio (alsaaudio if you're on linux)
+- Numpy
+- PyAudio (for WASAPI as_loopback feature must have a special version of [PyAudio](https://github.com/intxcc/pyaudio_portaudio))
+- AlsaAudio (if you're on linux)
 - Python Image Library (PIL)
 
 Usage : <script_name> --ip <arduino_ip> -p <arduino_port>
 
-For IP argument it can be also a mDNS or DNS name
+Note : IP argument can be also a mDNS or DNS name
