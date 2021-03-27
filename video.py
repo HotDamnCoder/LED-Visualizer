@@ -1,3 +1,6 @@
+import sys
+import getopt
+import socket
 from math import sqrt
 from PIL import ImageGrab
 from audio import CLIENT_SOCKET, sendColorCode, exit
@@ -12,12 +15,34 @@ def getAverageColorFromResizing(image):
 
 
 if __name__ == "__main__":
+    ARDUINO_IP = None
+    ARDUINO_PORT = None
+    try:
+        options, remainder = getopt.getopt(sys.argv[1:], "hp:", ["ip="])
+        for opt, arg in options:
+            if opt == "--ip":
+                try:
+                    ARDUINO_IP = socket.gethostbyname(arg)
+                except socket.error:
+                    exit("Invalid ip address.")
+            elif opt == "-p":
+                try:
+                    ARDUINO_PORT = int(arg)
+                except ValueError:
+                    exit("Invalid port number.")
+            elif opt == '-h':
+                exit("Script usage : <script_name> --ip <arduino_ip> -p <arduino_port>")
+    except getopt.GetoptError:
+        exit("Invalid arguments.")
+
+    if ARDUINO_IP is None or ARDUINO_PORT is None:
+        exit("Not enough arguments.")
+
     print("Starting to record screen...")
     try:
         while True:
             r, g, b, w = getAverageColorFromResizing(ImageGrab.grab())
-            sendColorCode(r, g, b, w)
+            sendColorCode(ARDUINO_IP, ARDUINO_PORT, (r, g, b, w))
     except KeyboardInterrupt:
         CLIENT_SOCKET.close()
-        print()
-        exit()
+        exit("")
