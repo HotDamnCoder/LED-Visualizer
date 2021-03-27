@@ -33,6 +33,7 @@ if CURRENT_OS == 'Linux':
                            channels=channels,
                            format=alsaaudio.PCM_FORMAT_S32_LE,
                            periodsize=CHUNK_SIZE)
+
 elif CURRENT_OS == 'Windows':
     import pyaudio
 
@@ -48,6 +49,7 @@ elif CURRENT_OS == 'Windows':
 
     PyAudio = pyaudio.PyAudio()
     WASAPI_info = PyAudio.get_host_api_info_by_type(pyaudio.paWASAPI)
+
     if 'defaultOutputDevice' in WASAPI_info.keys():
         recording_device = PyAudio.get_device_info_by_index(
             WASAPI_info['defaultOutputDevice'])
@@ -72,6 +74,7 @@ elif CURRENT_OS == 'Windows':
                           frames_per_buffer=CHUNK_SIZE,
                           input_device_index=device_index,
                           as_loopback=True)
+                          
 else:
     print("OS not supported!")
     exit()
