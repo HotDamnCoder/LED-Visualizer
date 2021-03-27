@@ -5,6 +5,7 @@ import sys
 import getopt
 # ! https://www.nti-audio.com/en/support/know-how/fast-fourier-transform-fft good resource about fft
 
+# ! This is needed here because video.py imports it
 CLIENT_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
@@ -119,7 +120,7 @@ if __name__ == "__main__":
 
     # * Initializes OS specific recording variables
     current_os = platform.system()
-    
+
     if current_os == 'Linux':
         import alsaaudio
 
