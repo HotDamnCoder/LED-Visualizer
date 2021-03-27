@@ -5,7 +5,9 @@
     "python.linting.pylintEnabled": true,
     "python.linting.pycodestyleEnabled": false,
     "cSpell.words": [
+        "LANCZOS",
         "alsaaudio",
+        "gethostbyname",
         "pyaudio"
     ]
 }
