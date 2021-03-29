@@ -1,6 +1,7 @@
 from math import sqrt
 from PIL import ImageGrab
-from audio import CLIENT_SOCKET, sendColorCode, argumentParsing, exit
+from ArduinoSocket import ArduinoSocket
+from helperFunctions import exit, argumentParsing, getColorCode
 
 
 def getAverageColorFromResizing(image):
@@ -12,13 +13,18 @@ def getAverageColorFromResizing(image):
 
 
 if __name__ == "__main__":
-    ARDUINO_IP, ARDUINO_PORT = argumentParsing()
-
+    try:
+        arduino_ip, arduino_port = argumentParsing()
+        ARDUINO_SOCKET = ArduinoSocket(arduino_ip, arduino_port)
+    except Exception as e:
+        exit(e)
+        
     print("Starting to record screen...")
     try:
         while True:
             r, g, b, w = getAverageColorFromResizing(ImageGrab.grab())
-            sendColorCode(ARDUINO_IP, ARDUINO_PORT, (r, g, b, w))
+            ARDUINO_SOCKET.send(getColorCode(r, g, b, w))
     except KeyboardInterrupt:
-        CLIENT_SOCKET.close()
+        ARDUINO_SOCKET.send(getColorCode(0, 0, 0, 0))
+        ARDUINO_SOCKET.close()
         exit("")
