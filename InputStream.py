@@ -33,22 +33,22 @@ class InputStream():
                             return api_device
                 return None
 
-            PyAudio = pyaudio.PyAudio()
-            WASAPI_info = PyAudio.get_host_api_info_by_type(pyaudio.paWASAPI)
+            self.PyAudio = pyaudio.PyAudio()
+            WASAPI_info = self.PyAudio.get_host_api_info_by_type(pyaudio.paWASAPI)
 
             if 'defaultOutputDevice' in WASAPI_info.keys():
-                recording_device = PyAudio.get_device_info_by_index(
+                recording_device = self.PyAudio.get_device_info_by_index(
                     WASAPI_info['defaultOutputDevice'])
             else:
                 print("No WASAPI compatible device.")
                 print("Using Stereo Mix.")
-                recording_device = findStereoMix(PyAudio)
+                recording_device = findStereoMix(self.PyAudio)
                 if recording_device is None:
                     raise Exception("Didn't find Stereo Mix.")
 
             device_index = recording_device['index']
             self.rate = int(recording_device['defaultSampleRate'])
-            self.stream = PyAudio.open(format=pyaudio.paInt32,
+            self.stream = self.PyAudio.open(format=pyaudio.paInt32,
                                        channels=self.channels,
                                        rate=rate,
                                        input=True,
@@ -84,4 +84,4 @@ class pyaudioStream(InputStream):
     def close(self):
         self.stream.stop_stream()
         self.stream.close()
-        PyAudio.terminate()
+        self.PyAudio.terminate()
